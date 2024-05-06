@@ -5,8 +5,8 @@ import kotlin.math.ceil
 
 /**
  * @link
- * http://wiki.yak.net/589/Bubble_Babble_Encoding.txthttp://wiki.yak.net/589/Bubble_Babble_Encoding.txt
- * 仅支持 ascii
+ *   http://wiki.yak.net/589/Bubble_Babble_Encoding.txthttp://wiki.yak.net/589/Bubble_Babble_Encoding.txt
+ *   仅支持 ascii
  */
 object BubbleBabble {
     private const val vowels = "aeiouy" // 元音表
@@ -14,6 +14,7 @@ object BubbleBabble {
 
     /**
      * 对原文进行bubble bubble编码
+     *
      * @param str 原文字符串
      * @return 编码字符串
      */
@@ -25,10 +26,12 @@ object BubbleBabble {
         val P = IntArray(3) // 三元组
         for (i in 0 until k / 2 + 1) {
             C[i] =
-                if (i == 0) 1
-                else
+                if (i == 0) {
+                    1
+                } else {
                     ((C[i - 1] * 5 + D[((i + 1) * 2) - 3 - 1] * 7 + D[((i + 1) * 2) - 2 - 1]) % 36)
                         .toByte()
+                }
         }
         for (i in 0 until k / 2) { // 每两个数据构建一个五元组
             val a = ((D[i * 2].toInt() shr 6 and 3) + C[i]) % 6
@@ -60,12 +63,12 @@ object BubbleBabble {
         out.append(consonants[P[1]])
         out.append(vowels[P[2]])
         out.append('x')
-        println(out)
         return out.toString()
     }
 
     /**
      * 对bubble bubble 编码的字符串进行解码
+     *
      * @param str 编码字符串
      * @return 原始数据
      */
@@ -110,7 +113,7 @@ object BubbleBabble {
 fun String.bubbleBabble() = BubbleBabble.encrypt(this)
 
 fun ByteArray.bubbleBabble(charset: String) =
-    BubbleBabble.encrypt(String(this, Charset.forName(charset)))
+    BubbleBabble.encrypt(toString(Charset.forName(charset)))
 
 fun String.bubbleBabbleDecode() = BubbleBabble.decrypt(this)
 

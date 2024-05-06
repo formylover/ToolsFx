@@ -1,11 +1,42 @@
 package me.leon.plugin
 
 import javax.json.Json.createReader
+import kotlin.test.Test
 import me.leon.ext.*
 import me.leon.toolsfx.plugin.CoordinatorTransform
-import org.junit.Test
+import me.leon.toolsfx.plugin.LocationServiceType
 
 class LocationParse {
+
+    @Test
+    fun geo() {
+
+        //        LocationServiceType.GEO_TIAN.process("北京市延庆区延庆镇莲花池村前街50夕阳红养老院", mutableMapOf())
+        //            .also {
+        //                println(it)
+        //            }
+        //        LocationServiceType.GEO_REVERSE_TIAN.process("116.001608,40.453170",
+        // mutableMapOf())
+        //            .also {
+        //                println(it)
+        //            }
+        LocationServiceType.GEO_REVERSE_BD.process("116.001608,40.453170", mutableMapOf()).also {
+            println(it)
+        }
+        LocationServiceType.GEO_REVERSE_BD_GCJ.process("116.001608,40.453170", mutableMapOf())
+            .also { println(it) }
+        LocationServiceType.GEO_REVERSE_BD_BD09.process("116.001608,40.453170", mutableMapOf())
+            .also { println(it) }
+        //        LocationServiceType.GEO_BD.process("北京市延庆区延庆镇莲花池村前街50夕阳红养老院", mutableMapOf())
+        //            .also {
+        //                println(it)
+        //            }
+        //        LocationServiceType.GEO_AMAP.process("北京市延庆区延庆镇莲花池村前街50夕阳红养老院", mutableMapOf())
+        //            .also {
+        //                println(it)
+        //            }
+    }
+
     @Test
     fun location() {
         "C:\\Users\\Leon\\Desktop\\loc.txt"
@@ -25,22 +56,25 @@ class LocationParse {
             .readStreamFromNet()
             .also {
                 createReader(it).readObject().also {
-                    it.getJsonArray("geocodes").map { it.asJsonObject() }.forEach { jo ->
-                        jo.getString("location").split(",").run {
-                            CoordinatorTransform.distance(
-                                    addr[4].toDouble(),
-                                    addr[3].toDouble(),
-                                    this[1].toDouble(),
-                                    this[0].toDouble()
-                                )
-                                .also {
-                                    if (it > 200)
-                                        println(
-                                            "${jo.getString("level")} 误差: $it db $addr amap ${this@run}"
-                                        )
-                                }
+                    it.getJsonArray("geocodes")
+                        .map { it.asJsonObject() }
+                        .forEach { jo ->
+                            jo.getString("location").split(",").run {
+                                CoordinatorTransform.distance(
+                                        addr[4].toDouble(),
+                                        addr[3].toDouble(),
+                                        this[1].toDouble(),
+                                        this[0].toDouble()
+                                    )
+                                    .also {
+                                        if (it > 200) {
+                                            println(
+                                                "${jo.getString("level")} 误差: $it db $addr amap ${this@run}"
+                                            )
+                                        }
+                                    }
+                            }
                         }
-                    }
                 }
             }
     }
@@ -56,8 +90,8 @@ class LocationParse {
                 .replaceAfterLast("农贸市场", "")
                 .preHandle()
 
-        ("http://restapi.amap.com/v3/place/text?key=${key}&keywords=$location" +
-                "&types=政府机构及社会团体;政府机关;政府机关相关&city=${city}")
+        ("http://restapi.amap.com/v3/place/text?key=$key&keywords=$location" +
+                "&types=政府机构及社会团体;政府机关;政府机关相关&city=$city")
             .readFromNet()
             .also {
                 it.fromJson(AmapSearchBean::class.java).also { bean ->
@@ -94,7 +128,6 @@ class LocationParse {
                                 ?: bean.pois?.first().also {
                                 println("$location 可能不准确  \n\t\t${bean.pois}")
                             }
-
                     calculateDistance(poi, addr, location)
                 }
             }
@@ -109,11 +142,12 @@ class LocationParse {
                     this[0].toDouble()
                 )
                 .also {
-                    if (it > 200)
+                    if (it > 200) {
                         println(
                             "\t\t$location  ${poi.address} ${poi.adname}${poi.name}" +
                                 " \t\t误差: $it db $addr amap ${this@run}  "
                         )
+                    }
                 }
         }
     }

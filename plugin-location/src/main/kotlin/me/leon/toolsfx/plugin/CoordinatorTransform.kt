@@ -23,11 +23,30 @@ import kotlin.math.*
  */
 object CoordinatorTransform {
     private const val PI = Math.PI
-    private const val AXIS = 6378245.0 //
+    private const val AXIS = 6_378_245.0 //
     private const val OFFSET = 0.00669342162296594323 // (a^2 - b^2) / a^2
     private const val X_PI = PI * 3000.0 / 180.0
     private val PATTERN_DEGREE_LOCATION =
         Pattern.compile("(\\d{1,3})° *(\\d{1,2})′ *(\\d{1,2}\\.\\d+)″")
+
+    private val map: Map<String, Map<String, Double>> =
+        mapOf(
+            "wgs" to
+                mapOf(
+                    "a" to 6_378_137.0,
+                    "b" to 6_356_752.3142,
+                    "e1Square" to 0.00669437999013,
+                    "e2Square" to 0.006739496742227,
+                    "ratio" to 1.0 / 298.257223563,
+                ),
+            "cgcs2000" to
+                mapOf(
+                    "a" to 6_378_137.0,
+                    "b" to 66_356_752.314,
+                    "e1Square" to 0.00669438002290,
+                    "ratio" to 1.0 / 298.257222101,
+                ),
+        )
 
     // GCJ-02=>BD09 火星坐标系=>百度坐标系  10位小数 跟百度api一样
     fun gcj2BD09(glat: Double, glng: Double): DoubleArray {
@@ -119,7 +138,7 @@ object CoordinatorTransform {
             if (abs(dLat) < threshold && abs(dlng) < threshold) break
             if (dLat > 0) pLat = wgsLat else mLat = wgsLat
             if (dlng > 0) plng = wgslng else mlng = wgslng
-            if (++i > 10000) break
+            if (++i > 10_000) break
         }
         val latlng = DoubleArray(2)
         latlng[0] = wgsLat
@@ -129,7 +148,7 @@ object CoordinatorTransform {
 
     // 两点距离
     fun distance(latA: Double, logA: Double, latB: Double, logB: Double): Double {
-        val earthR = 6371000
+        val earthR = 6_371_000
         val x =
             (cos(Math.toRadians(latA)) *
                 cos(Math.toRadians(latB)) *
@@ -208,5 +227,43 @@ object CoordinatorTransform {
             }
         }
         return degree
+    }
+
+    /** 经纬度转地心 */
+    fun lbh2xyz(l: Double, b: Double, h: Double, type: String = "wgs"): DoubleArray {
+        val lRadian = Math.toRadians(l)
+        val bRadian = Math.toRadians(b)
+
+        val r = requireNotNull(map[type]!!["a"])
+        val e2 = requireNotNull(map[type]!!["e1Square"])
+        val tmp = 1.0 - e2
+
+        val n = r / sqrt(1 - tmp * sin(bRadian).pow(2))
+        val x = (n + h) * cos(bRadian) * cos(lRadian)
+        val y = (n + h) * cos(bRadian) * sin(lRadian)
+        val z = (n * tmp + h) * sin(bRadian)
+        return doubleArrayOf(x, y, z)
+    }
+
+    fun xyz2lbh(x: Double, y: Double, z: Double, type: String = "wgs"): DoubleArray {
+        val l = Math.toDegrees(atan(y / x))
+        requireNotNull(map[type])
+        val r = requireNotNull(map[type]!!["a"])
+        val e2 = requireNotNull(map[type]!!["e1Square"])
+        val tmp = 1.0 - e2
+
+        var tB = 0.0
+        var n = r / sqrt(1 - tmp * sin(tB).pow(2))
+        var b = atan((z + n * e2 * sin(tB)) / sqrt(x.pow(2) + y.pow(2)))
+        while (b - tB > 0.00000001) {
+            tB = b
+            n = r / sqrt(1 - tmp * sin(tB).pow(2))
+            b = atan((z + n * e2 * sin(tB)) / sqrt(x.pow(2) + y.pow(2)))
+        }
+
+        val h = z / sin(b) - n * tmp
+        b = Math.toDegrees(b)
+
+        return doubleArrayOf(l, b, h)
     }
 }

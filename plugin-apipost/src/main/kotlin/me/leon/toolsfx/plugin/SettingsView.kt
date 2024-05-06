@@ -5,7 +5,7 @@ import javafx.beans.property.SimpleStringProperty
 import javafx.geometry.Pos
 import javafx.scene.control.TextArea
 import javafx.scene.control.TextField
-import me.leon.ext.fileDraggedHandler
+import me.leon.ext.fx.fileDraggedHandler
 import me.leon.toolsfx.plugin.ApiConfig.saveConfig
 import me.leon.toolsfx.plugin.net.TrustManager
 import tornadofx.*
@@ -14,8 +14,11 @@ class SettingsView : View("Setting") {
 
     private val proxies = listOf("HTTP", "SOCKS4", "SOCKS5")
     private val selectedProxy = SimpleStringProperty(ApiConfig.proxyType)
-    private val isEnableProxy = SimpleBooleanProperty(ApiConfig.isEnableProxy)
-    private val isP12 = SimpleBooleanProperty(false)
+    private val enableProxy = SimpleBooleanProperty(ApiConfig.isEnableProxy)
+    private val followRedirect = SimpleBooleanProperty(ApiConfig.followRedirect)
+    private val ignoreCert = SimpleBooleanProperty(ApiConfig.isIgnoreCert)
+    private val p12 = SimpleBooleanProperty(false)
+
     private lateinit var taHeaders: TextArea
     private lateinit var tfIp: TextField
     private lateinit var tfPort: TextField
@@ -34,22 +37,29 @@ class SettingsView : View("Setting") {
         alignment = Pos.CENTER
         label("TimeOut")
         tfTime = textfield(ApiConfig.timeOut.toString()) { promptText = "global header" }
+
+        hbox {
+            label("FollowRedirect")
+            spacing = 8.0
+            alignment = Pos.CENTER_LEFT
+            checkbox("", followRedirect)
+        }
+
         label("Certification")
         hbox {
             spacing = 8.0
             alignment = Pos.CENTER_LEFT
-            checkbox("p12", isP12)
-            tfCerPath =
-                textfield() {
-                    promptText = "file path(drag file here)"
-                    onDragEntered = eventHandler
-                }
+            checkbox("p12", p12)
+            tfCerPath = textfield {
+                promptText = "file path(drag file here)"
+                onDragEntered = eventHandler
+            }
 
-            tfCerPass =
-                textfield() {
-                    enableWhen(isP12)
-                    promptText = "pkcs12 password"
-                }
+            tfCerPass = textfield {
+                enableWhen(p12)
+                promptText = "pkcs12 password"
+            }
+            checkbox("ignoreSSL", ignoreCert)
         }
         label("Proxy")
         hbox {
@@ -58,15 +68,15 @@ class SettingsView : View("Setting") {
             combobox(selectedProxy, proxies)
             tfIp =
                 textfield(ApiConfig.proxyHost) {
-                    enableWhen(isEnableProxy)
+                    enableWhen(enableProxy)
                     promptText = "ip"
                 }
             tfPort =
                 textfield(ApiConfig.proxyPort) {
-                    enableWhen(isEnableProxy)
+                    enableWhen(enableProxy)
                     promptText = "port"
                 }
-            checkbox("enable", isEnableProxy)
+            checkbox("enable", enableProxy)
         }
         label("Global Headers")
         taHeaders = textarea(ApiConfig.globalHeaders) { promptText = "global header" }
@@ -74,16 +84,21 @@ class SettingsView : View("Setting") {
         button("apply") {
             action {
                 if (tfCerPath.text.isNotEmpty()) {
-                    if (isP12.get()) TrustManager.parseFromPkcs12(tfCerPath.text, tfCerPass.text)
-                    else TrustManager.parseFromCertification(tfCerPath.text)
+                    if (p12.get()) {
+                        TrustManager.parseFromPkcs12(tfCerPath.text, tfCerPass.text)
+                    } else {
+                        TrustManager.parseFromCertification(tfCerPath.text)
+                    }
                 }
                 saveConfig(
-                    isEnableProxy.get(),
+                    enableProxy.get(),
                     taHeaders.text,
                     selectedProxy.get(),
                     tfIp.text,
                     tfPort.text,
-                    tfTime.text.toInt()
+                    tfTime.text.toInt(),
+                    followRedirect.get(),
+                    ignoreCert.get()
                 )
                 close()
             }

@@ -2,10 +2,15 @@ package me.leon.plugin
 
 import java.io.File
 import java.util.Base64
+import kotlin.test.Test
+import me.leon.Api
+import me.leon.ext.*
 import me.leon.toolsfx.plugin.net.*
-import org.junit.Test
 
 class HttpTest {
+
+    private val httpConfigPath = File(File("").absoluteFile.parentFile, "/testdata/https")
+
     @Test
     fun getTest() {
         HttpUrlUtil.get(
@@ -136,6 +141,30 @@ class HttpTest {
     }
 
     @Test
+    fun parse() {
+        val apis = readRes<HttpTest>("/apis.json").fromJsonArray(Api::class.java)
+        println(apis)
+        for (api in apis.take(1)) {
+            println(api)
+            val r =
+                HttpUrlUtil.postFile(
+                        api.api,
+                        listOf(
+                            File(
+                                "E:\\prj\\Android-app\\app\\src\\main\\res\\drawable\\icon_photograph.png"
+                            )
+                        ),
+                        api.file,
+                        api.body.toMutableMap(),
+                        api.headers.toMutableMap()
+                    )
+                    .data
+
+            println(r.simpleJsonPath(api.result))
+        }
+    }
+
+    @Test
     fun params() {
         val headers =
             """
@@ -151,16 +180,18 @@ class HttpTest {
             sec-fetch-site: same-site
             user-agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko)
              Chrome/86.0.4240.198 Safari/537.36
-        """.trimIndent()
+        """
+                .trimIndent()
+        println(headers)
         val header2 = "Max-Forwards:44\n" + "aa:bb"
         println(NetHelper.parseHeaderString(headers))
         println(NetHelper.parseHeaderString(header2))
     }
 
-    private val httpConfigPath = File(File("").absoluteFile.parentFile, "/testdata/https")
-
     @Test
     fun cert() {
+
+        HttpUrlUtil.verifySSL(true)
         TrustManager.parseFromCertification("$httpConfigPath/baidu.cer")
         HttpUrlUtil.get("https://www.baidu.com")
         // error cer
